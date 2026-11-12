@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phishalyzer"
+version = "1.0.0"
+description = "A modular phishing URL and domain analysis platform for security investigations."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [
+    { name = "Phishing Analyzer Development Team" }
+]
+
+dependencies = [
+    "requests>=2.32,<3.0",
+    "streamlit>=1.40,<2.0",
+    "dnspython>=2.7,<3.0",
+    "python-whois>=0.9,<1.0",
+    "tldextract>=5.1,<6.0",
+    "python-dotenv>=1.0,<2.0",
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "reportlab>=4.2,<5.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-cov>=6.0,<7.0",
+    "ruff>=0.8,<1.0",
+    "mypy>=1.13,<2.0"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
