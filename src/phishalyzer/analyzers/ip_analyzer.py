@@ -1,8 +1,8 @@
 
 """IP address intelligence analyzer for Phishalyzer."""
 
-from dataclasses import dataclass
 import ipaddress
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

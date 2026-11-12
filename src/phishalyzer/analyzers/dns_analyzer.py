@@ -2,7 +2,6 @@
 """DNS record analysis module for Phishalyzer."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 import dns.exception
 import dns.resolver
@@ -11,7 +10,7 @@ import dns.resolver
 @dataclass(frozen=True)
 class DNSAnalysis:
     domain: str
-    records: Dict[str, List[str]] = field(default_factory=dict)
+    records: dict[str, list[str]] = field(default_factory=dict)
     errors: tuple = ()
 
 

@@ -3,7 +3,6 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime
-import re
 
 import whois
 

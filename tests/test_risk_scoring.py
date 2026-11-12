@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from phishalyzer.core.config import Settings
 from phishalyzer.core.risk_scoring import RiskScoringEngine
 
 
@@ -145,7 +146,10 @@ def test_invalid_virustotal_counts_are_not_scored(engine, parsed_url):
     result = engine.analyze(parsed_url, virustotal=vt)
 
     assert result.score == 0
-    assert "VirusTotal statistics are incomplete or invalid." in result.warnings
+    assert (
+        "VirusTotal statistics are incomplete or invalid."
+        in result.warnings
+    )
 
 
 @pytest.mark.parametrize(
@@ -177,7 +181,10 @@ def test_invalid_whois_age_is_not_scored(engine, parsed_url):
     result = engine.analyze(parsed_url, whois=whois)
 
     assert result.score == 0
-    assert "WHOIS domain age is unavailable or invalid." in result.warnings
+    assert (
+        "WHOIS domain age is unavailable or invalid."
+        in result.warnings
+    )
 
 
 def test_urlscan_phishing_category_adds_twenty_points(
@@ -272,25 +279,79 @@ def test_all_sources_can_produce_maximum_score(engine):
     assert result.evidence_coverage == 100
 
 
+# ---------------------------------------------------------
+# Configurable risk-level threshold tests
+# ---------------------------------------------------------
+
+
 @pytest.mark.parametrize(
     ("score", "expected"),
     [
         (0, "Low"),
-        (19, "Low"),
-        (20, "Medium"),
-        (39, "Medium"),
-        (40, "High"),
-        (69, "High"),
-        (70, "Critical"),
+        (24, "Low"),
+        (25, "Medium"),
+        (49, "Medium"),
+        (50, "High"),
+        (74, "High"),
+        (75, "Critical"),
         (100, "Critical"),
     ],
 )
-def test_risk_level_boundaries(score, expected):
-    assert RiskScoringEngine._risk_level(score) == expected
+def test_risk_level_boundaries(engine, score, expected):
+    assert engine._risk_level(score) == expected
+
+
+def test_custom_risk_thresholds():
+    settings = Settings(
+        risk_low_max=19,
+        risk_moderate_max=39,
+        risk_high_max=69,
+        risk_critical_max=100,
+    )
+
+    engine = RiskScoringEngine(settings=settings)
+
+    assert engine._risk_level(19) == "Low"
+    assert engine._risk_level(20) == "Medium"
+    assert engine._risk_level(40) == "High"
+    assert engine._risk_level(70) == "Critical"
+
+
+def test_invalid_risk_thresholds_are_rejected():
+    settings = Settings(
+        risk_low_max=30,
+        risk_moderate_max=20,
+        risk_high_max=70,
+        risk_critical_max=100,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="strictly increasing",
+    ):
+        RiskScoringEngine(settings=settings)
+
+
+def test_critical_threshold_must_be_100():
+    settings = Settings(
+        risk_low_max=20,
+        risk_moderate_max=40,
+        risk_high_max=70,
+        risk_critical_max=90,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="must be 100",
+    ):
+        RiskScoringEngine(settings=settings)
 
 
 def test_parsed_url_is_required(engine):
-    with pytest.raises(ValueError, match="Parsed URL analysis is required"):
+    with pytest.raises(
+        ValueError,
+        match="Parsed URL analysis is required",
+    ):
         engine.analyze(None)
 
 

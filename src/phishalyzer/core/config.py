@@ -16,7 +16,9 @@ class Settings(BaseSettings):
 
     app_name: str = "Phishalyzer"
     app_env: Literal["development", "testing", "production"] = "development"
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    log_level: Literal[
+        "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+    ] = "INFO"
 
     virustotal_api_key: SecretStr | None = None
     urlscan_api_key: SecretStr | None = None
@@ -37,7 +39,8 @@ class Settings(BaseSettings):
     )
 
     def validate_risk_thresholds(self) -> None:
-        """Ensure risk thresholds are strictly increasing."""
+        """Ensure risk thresholds are strictly increasing and end at 100."""
+
         thresholds = [
             self.risk_low_max,
             self.risk_moderate_max,
@@ -46,12 +49,20 @@ class Settings(BaseSettings):
         ]
 
         if thresholds != sorted(set(thresholds)):
-            raise ValueError("Risk thresholds must be strictly increasing.")
+            raise ValueError(
+                "Risk thresholds must be strictly increasing."
+            )
+
+        if self.risk_critical_max != 100:
+            raise ValueError(
+                "The critical risk threshold must be 100."
+            )
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return cached, validated application settings."""
+
     settings = Settings()
     settings.validate_risk_thresholds()
     return settings

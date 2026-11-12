@@ -12,7 +12,6 @@ import requests
 
 from phishalyzer.core.config import get_settings
 
-
 VT_BASE_URL = "https://www.virustotal.com/api/v3"
 
 

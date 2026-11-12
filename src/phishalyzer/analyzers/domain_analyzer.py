@@ -1,9 +1,9 @@
 
 """Domain intelligence analyzer for Phishalyzer."""
 
-from dataclasses import dataclass
-import socket
 import ipaddress
+import socket
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

@@ -1,11 +1,10 @@
 
 """Tests for Phishalyzer WHOIS analyzer."""
 
-import pytest
-import whois
-
 from datetime import date, datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 
 from phishalyzer.analyzers.whois_analyzer import WhoisAnalyzer
 

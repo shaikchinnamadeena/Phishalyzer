@@ -1,16 +1,15 @@
 
 """URLScan.io integration for Phishalyzer."""
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
-import re
 
 import requests
 
 from phishalyzer.core.config import get_settings
-
 
 URLSCAN_BASE_URL = "https://urlscan.io/api/v1"
 

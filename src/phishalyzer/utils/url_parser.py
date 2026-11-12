@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 
-
 URL_SHORTENERS = frozenset({
     "bit.ly",
     "tinyurl.com",
@@ -140,12 +139,12 @@ def parse_url(raw_url: str) -> ParsedURL:
             )
 
         port = parts.port
-
         hostname = _normalize_hostname(parts.hostname)
 
         if not hostname:
             raise ValueError("Hostname cannot be empty.")
 
+        # Validate IP addresses separately from DNS hostnames.
         try:
             ipaddress.ip_address(hostname)
             is_ip_address = True
@@ -153,8 +152,9 @@ def parse_url(raw_url: str) -> ParsedURL:
         except ValueError:
             is_ip_address = False
 
-            if not _validate_hostname(hostname):
-                raise ValueError("Invalid hostname format.")
+        # Apply DNS hostname validation only to domain names.
+        if not is_ip_address and not _validate_hostname(hostname):
+            raise ValueError("Invalid hostname format.") from None
 
         if port is not None and not 1 <= port <= 65535:
             raise ValueError("Invalid port.")

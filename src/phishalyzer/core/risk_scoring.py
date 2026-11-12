@@ -4,6 +4,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from phishalyzer.core.config import Settings, get_settings
+
 
 @dataclass(frozen=True)
 class RiskEvidence:
@@ -41,6 +43,12 @@ class RiskScoringEngine:
         "social engineering",
     })
 
+    def __init__(self, settings: Settings | None = None) -> None:
+        """Initialize scoring with validated application settings."""
+
+        self.settings = settings if settings is not None else get_settings()
+        self.settings.validate_risk_thresholds()
+
     def analyze(
         self,
         parsed_url: Any,
@@ -57,7 +65,7 @@ class RiskScoringEngine:
 
         evidence: list[RiskEvidence] = []
         warnings: list[str] = []
-        completed_sources = 1  # URL structure is required and supplied.
+        completed_sources = 1
 
         self._score_url_structure(parsed_url, evidence)
 
@@ -66,32 +74,39 @@ class RiskScoringEngine:
         elif self._score_virustotal(virustotal, evidence):
             completed_sources += 1
         else:
-            warnings.append("VirusTotal statistics are incomplete or invalid.")
+            warnings.append(
+                "VirusTotal statistics are incomplete or invalid."
+            )
 
         if whois is None:
             warnings.append("WHOIS intelligence is unavailable.")
         elif self._score_whois(whois, evidence):
             completed_sources += 1
         else:
-            warnings.append("WHOIS domain age is unavailable or invalid.")
+            warnings.append(
+                "WHOIS domain age is unavailable or invalid."
+            )
 
         if urlscan is None:
             warnings.append("URLScan intelligence is unavailable.")
         elif self._score_urlscan(urlscan, evidence):
             completed_sources += 1
         else:
-            warnings.append("URLScan threat categories are unavailable or invalid.")
+            warnings.append(
+                "URLScan threat categories are unavailable or invalid."
+            )
 
-        # DNS and IP are retained as context. They do not add points
-        # until specific, validated risk indicators are defined.
+        # DNS and IP are retained as context.
+        # They do not add points until validated risk indicators are defined.
         if dns is not None:
             warnings.append(
-                "DNS results are contextual and do not currently add risk points."
+                "DNS results are contextual and do not currently "
+                "add risk points."
             )
 
         if ip is not None:
             warnings.append(
-                "IP classification is contextual and does not currently"
+                "IP classification is contextual and does not currently "
                 "add risk points."
             )
 
@@ -168,6 +183,7 @@ class RiskScoringEngine:
             )
 
         keywords = getattr(parsed_url, "suspicious_keywords", ())
+
         if isinstance(keywords, (tuple, list, set, frozenset)):
             valid_keywords = sorted({
                 item.strip().lower()
@@ -178,6 +194,7 @@ class RiskScoringEngine:
             valid_keywords = []
 
         keyword_points = min(10, len(valid_keywords) * 2)
+
         if keyword_points:
             points += keyword_points
             self._add(
@@ -191,26 +208,33 @@ class RiskScoringEngine:
 
         # Structural indicators share a maximum budget of 25.
         overflow = max(0, points - 25)
+
         if overflow:
             remaining = overflow
+
             for index in range(len(evidence) - 1, -1, -1):
                 item = evidence[index]
+
                 if item.source != "URL":
                     continue
 
                 reduction = min(item.points, remaining)
+
                 evidence[index] = RiskEvidence(
                     source=item.source,
                     indicator=item.indicator,
                     points=item.points - reduction,
                     explanation=item.explanation,
                 )
+
                 remaining -= reduction
 
                 if remaining == 0:
                     break
 
-            evidence[:] = [item for item in evidence if item.points > 0]
+            evidence[:] = [
+                item for item in evidence if item.points > 0
+            ]
 
     def _score_virustotal(
         self,
@@ -225,6 +249,7 @@ class RiskScoringEngine:
         undetected = getattr(result, "undetected", None)
 
         counts = (malicious, suspicious, harmless, undetected)
+
         if any(
             not isinstance(value, int)
             or isinstance(value, bool)
@@ -243,6 +268,7 @@ class RiskScoringEngine:
             malicious_points,
             f"VirusTotal reported {malicious} malicious detections.",
         )
+
         self._add(
             evidence,
             "VirusTotal",
@@ -271,16 +297,24 @@ class RiskScoringEngine:
 
         if age <= 7:
             points = 15
-            explanation = "The domain was registered within the last 7 days."
+            explanation = (
+                "The domain was registered within the last 7 days."
+            )
         elif age <= 30:
             points = 12
-            explanation = "The domain was registered within the last 30 days."
+            explanation = (
+                "The domain was registered within the last 30 days."
+            )
         elif age <= 90:
             points = 8
-            explanation = "The domain was registered within the last 90 days."
+            explanation = (
+                "The domain was registered within the last 90 days."
+            )
         elif age <= 180:
             points = 5
-            explanation = "The domain was registered within the last 180 days."
+            explanation = (
+                "The domain was registered within the last 180 days."
+            )
         else:
             points = 0
             explanation = "The domain is older than 180 days."
@@ -292,6 +326,7 @@ class RiskScoringEngine:
             points,
             explanation,
         )
+
         return True
 
     def _score_urlscan(
@@ -303,7 +338,10 @@ class RiskScoringEngine:
 
         categories = getattr(result, "categories", None)
 
-        if not isinstance(categories, (tuple, list, set, frozenset)):
+        if not isinstance(
+            categories,
+            (tuple, list, set, frozenset),
+        ):
             return False
 
         if any(not isinstance(item, str) for item in categories):
@@ -311,7 +349,10 @@ class RiskScoringEngine:
 
         normalized = {
             " ".join(
-                item.strip().lower().replace("_", " ").replace("-", " ").split()
+                item.strip().lower()
+                .replace("_", " ")
+                .replace("-", " ")
+                .split()
             )
             for item in categories
             if item.strip()
@@ -331,14 +372,16 @@ class RiskScoringEngine:
 
         return True
 
-    @staticmethod
-    def _risk_level(score: int) -> str:
-        """Map a score to its documented risk classification."""
+    def _risk_level(self, score: int) -> str:
+        """Map a risk score to its configured classification."""
 
-        if score <= 19:
+        if score <= self.settings.risk_low_max:
             return "Low"
-        if score <= 39:
+
+        if score <= self.settings.risk_moderate_max:
             return "Medium"
-        if score <= 69:
+
+        if score <= self.settings.risk_high_max:
             return "High"
+
         return "Critical"

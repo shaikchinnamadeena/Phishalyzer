@@ -2,9 +2,9 @@
 """Tests for Phishalyzer domain analyzer."""
 
 import socket
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 
 from phishalyzer.analyzers.domain_analyzer import DomainAnalyzer
 

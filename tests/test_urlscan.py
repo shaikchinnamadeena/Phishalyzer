@@ -44,8 +44,6 @@ def mock_response(data, status_code=200):
 def valid_scan_result():
     """Return a simulated URLScan result."""
 
-    scan_id = str(uuid.uuid4())
-
     return {
         "task": {
             "url": "https://example.com",
